@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Backend runtime data
+backend/pb_data/
+backend/pb_public/admin/
+
+# Env files
+.env
+.env.local
+*.env.local
+
+# Next.js
+frontend/.next/
+frontend/out/
+
+# Build output
+dist/
+build/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
