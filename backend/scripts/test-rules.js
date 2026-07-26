@@ -86,3 +86,7 @@ async function main() {
     console.log("\n✅ Rule enforcement working — Bob correctly sees nothing.");
   }
 }
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
