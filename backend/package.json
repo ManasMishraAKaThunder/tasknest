@@ -10,7 +10,8 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "setup:collections": "node scripts/setup-collections.js",
-    "setup:rules": "node scripts/setup-rules.js"
+    "setup:rules": "node scripts/setup-rules.js",
+    "test:rules": "node scripts/test-rules.js"
   },
   "keywords": [],
   "author": "",
