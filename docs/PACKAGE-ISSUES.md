@@ -136,3 +136,66 @@ server-side hooks.
 **Fix**: add `newRecord(collection)` to both `BaseApp` and the JSVM
 `createAppProxy`, returning `new RecordModel(collection.id,
 collection.name, {})`.
+
+## 🔴 `stripProtectedFields` silently strips `role` from ALL collections
+`RecordUpsertForm.stripProtectedFields()` in `record_upsert.js` has a
+hardcoded list of protected field names that get stripped from every
+record create/update request. The list includes `'role'`, which makes
+sense for auth collections (to prevent users escalating their own role),
+but it's applied **globally to ALL collections**, including base
+collections that legitimately have a field named `role`.
+In TaskNest, the `workspace_members` collection has a `role` select
+field (owner/member) — every attempt to set it is silently stripped,
+causing required-field validation to fail.
+**Impact**: any base collection with a field named `role` is broken.
+The field can be defined but never written to via the API.
+**Workaround**: rename the field to something else (e.g. `memberRole`).
+**Fix**: only strip auth-specific protected fields when the target
+collection `isAuth()`, not universally.
+
+## 🔴 `?=` (any-match) operator not implemented in rule expressions
+The rule expression parser in `record_field_resolver.js` supports
+operators `!=`, `==`, `>=`, `<=`, `=`, `>`, `<`, `~`, `%`, `@` but
+does NOT include `?=` (PocketBase's "any element in array matches"
+operator). When a rule uses `?=`, the parser falls through to the
+ternary `?` handler (line 354), which silently produces wrong results
+or returns false. The README doesn't explicitly document `?=` but the
+back-relation system returns arrays, so rules need an array-match
+operator to be useful.
+**Impact**: back-relation rules like
+`workspace_members_via_workspace.user ?= @request.auth.id` silently
+fail, making the entire relation-based rule system unusable.
+**Fix**: add `?=` to the operators list with semantics: "return true
+if the left value is an array and any element equals the right value."
+
+## 🔴 `canAccessRecord` does not pass `app` to `RecordFieldResolver`
+In `record_helpers.js:104-108`, the `canAccessRecord()` function
+creates a `RecordFieldResolver` with `{ record, collection,
+requestInfo }` but omits the `app` parameter. Without `app`:
+1. Relation traversal (e.g. `workspace.owner`) can't resolve — the
+   resolver gets the workspace ID string but can't look up the actual
+   workspace record to read its `owner` field.
+2. Back-relation queries (e.g. `workspace_members_via_workspace`)
+   short-circuit because `resolveRecordField` checks `this.app` and
+   returns `[]` when it's null.
+This means **all relation-based API rules silently deny access**,
+regardless of what the rule expression says.
+**Impact**: the documented rule system (which implies PocketBase-like
+relation traversal) is completely non-functional. Every rule that
+references fields on a related record always returns false → 403.
+**Workaround**: use only simple field checks on the record itself
+(e.g. `owner = @request.auth.id` on the workspaces collection) or
+`@request.auth.id != ''` for auth-only, and enforce scoping in the
+frontend.
+**Fix**: pass `app` to the resolver: `new RecordFieldResolver({
+app, record, collection, requestInfo })`.
+
+## 🟡 Auth collection record creation returns `{ token, record }` instead of just the record
+When creating a record in an auth-type collection (e.g. `users`) via
+`POST /api/collections/users/records`, the response body is
+`{ token: "...", record: { id: "...", ... } }` — the record is nested
+inside a `record` property alongside a pre-generated auth token.
+This differs from base collections which return the record directly.
+Not necessarily a bug (PocketBase does something similar), but it's
+undocumented and surprising — especially since the existing `setup-
+collections.js` script assumed `data.id` would exist on the response.
