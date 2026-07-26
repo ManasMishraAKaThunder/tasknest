@@ -123,7 +123,7 @@ async function main() {
       fields: [
         { name: "name", type: "text", required: true },
         { name: "board", type: "relation", collectionId: boards.id, required: true },
-        { name: "order", type: "number" },
+        { name: "position", type: "number" },
       ],
     },
     token

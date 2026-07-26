@@ -96,7 +96,7 @@ export interface List {
   id: string;
   name: string;
   board: string;
-  order: number;
+  position: number;
   created: string;
   updated: string;
 }
@@ -227,14 +227,14 @@ export const boards = {
 export const lists = {
   list(boardId: string) {
     return request<PaginatedResponse<List>>(
-      `/api/collections/lists/records?filter=board="${boardId}"&sort=order`
+      `/api/collections/lists/records?filter=board="${boardId}"&sort=position`
     );
   },
 
-  create(name: string, boardId: string, order: number = 0) {
+  create(name: string, boardId: string, position: number = 0) {
     return request<List>("/api/collections/lists/records", {
       method: "POST",
-      body: JSON.stringify({ name, board: boardId, order }),
+      body: JSON.stringify({ name, board: boardId, position }),
     });
   },
 
