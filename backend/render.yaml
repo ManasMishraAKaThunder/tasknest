@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: tasknest-backend
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npx tsx src/server.ts
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "10000"
+      - key: SOLARCH_JWT_SECRET
+        generateValue: true
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+    disk:
+      name: solarch-data
+      mountPath: /opt/render/project/src/pb_data
+      sizeGB: 1
