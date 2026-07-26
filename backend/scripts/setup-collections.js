@@ -1,6 +1,6 @@
 require("dotenv/config");
 
-const BASE = `http://localhost:${process.env.PORT || 8090}`;
+const BASE = process.env.API_URL || `http://localhost:${process.env.PORT || 8090}`;
 
 async function login() {
   const res = await fetch(`${BASE}/api/admins/auth-with-password`, {
@@ -49,6 +49,28 @@ async function ensureCollection(body, token) {
   return created;
 }
 
+async function deleteCollection(name, token) {
+  const existing = await getCollectionByName(name, token);
+  if (!existing) return;
+  const res = await fetch(`${BASE}/api/collections/${existing.id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    console.log(`⚠ delete ${name} failed: ${JSON.stringify(data)} — may have dependents`);
+    return;
+  }
+  console.log(`- deleted ${name} (${existing.id})`);
+}
+
+async function recreateCollection(body, token) {
+  await deleteCollection(body.name, token);
+  const created = await createCollection(body, token);
+  console.log(`+ recreated ${body.name} (${created.id})`);
+  return created;
+}
+
 async function main() {
   const token = await login();
 
@@ -76,7 +98,7 @@ async function main() {
       fields: [
         { name: "workspace", type: "relation", collectionId: workspaces.id, required: true },
         { name: "user", type: "relation", collectionId: users.id, required: true },
-        { name: "role", type: "select", values: ["owner", "member"], required: true },
+        { name: "memberRole", type: "select", values: ["owner", "member"], required: true },
       ],
     },
     token

@@ -76,3 +76,63 @@ lookups per the README).
 resolved/validated server-side.
 **Fix**: populate `collectionName` from the resolved collection at
 write time, matching what the README implies.
+
+## 🔴 JS hook `onRecordCreate` tag parameter is silently discarded
+In `dist/tools/jsvm/jsvm.js`, the JSVM sandbox registers record hooks as:
+```js
+onRecordCreate: (tag, handler) => app.onRecordCreate.bindFunc(handler)
+```
+The `tag` parameter (e.g. `'workspaces'`) is accepted in the function
+signature but **never forwarded** to the underlying `TaggedHook.bind()`
+method. `bindFunc(handler)` calls `bind({ func: handler })` with no
+`tags` property, so the handler goes into the global (untagged) handler
+list instead of the per-collection `tagHandlers` map. The same bug
+affects `onRecordUpdate` and `onRecordDelete`.
+**Impact**: hooks registered with a collection filter (the documented
+API per the README) are never scoped — they would fire for ALL
+collections, not just the one specified. Combined with the next bug,
+they never fire at all.
+**Fix**: pass the tag through: `bindFunc` should call
+`bind({ func: handler, tags: [tag] })`.
+
+## 🔴 `onRecordCreate` / `onRecordUpdate` / `onRecordDelete` hooks are never triggered
+The `save()` method in `dist/core/base.js` fires
+`onRecordAfterCreateSuccess.triggerForTag(model.collectionId, ...)` but
+**never fires** `onRecordCreate.trigger()` or
+`onRecordCreate.triggerForTag()`. The `onRecordCreate` hook object
+exists and accepts handler registrations, but no code path ever
+triggers it. The same applies to `onRecordUpdate` and `onRecordDelete`
+— only the `*AfterCreateSuccess` / `*AfterUpdateSuccess` /
+`*AfterDeleteSuccess` variants are triggered.
+Furthermore, `triggerForTag()` only checks the `tagHandlers` map, not
+the global `handlers` array, so even if a handler was registered
+(untagged, per the previous bug), it would still never fire.
+**Impact**: the **entire JS hook system for record events is
+non-functional**. Any hook using `onRecordCreate`, `onRecordUpdate`,
+or `onRecordDelete` silently does nothing.
+**Fix**: either (a) fire `onRecordCreate.trigger()` and
+`onRecordCreate.triggerForTag()` in the `save()` flow before/after the
+actual insert, or (b) rename the JSVM bindings to match the hooks that
+ARE triggered (`onRecordAfterCreateSuccess`, etc.) and expose those.
+
+## 🔴 `$app.newRecord()` does not exist in JSVM sandbox
+The README shows hooks using `$app.newRecord(collection)` to create
+new record instances for saving. However:
+1. The `BaseApp` class has no `newRecord()` method at all.
+2. The JSVM `createAppProxy()` in `jsvm.js` only exposes:
+   `settings`, `db`, `logger`, `findCollectionByNameOrId`,
+   `findAllCollections`, `save`, `delete`, `generateJWT`, `parseJWT`,
+   `hashPassword`, `verifyPassword`, `dataDir`, `isDev`.
+3. The `RecordModel` constructor (`new RecordModel(collectionId,
+   collectionName, data)`) is not importable in the VM sandbox since
+   `require` is not available.
+Calling `$app.newRecord(collection)` in a hook throws
+`TypeError: $app.newRecord is not a function`, but this error is
+swallowed silently because the hook never fires anyway (see previous
+bug).
+**Impact**: even if the hook system were fixed, hooks cannot create
+new records programmatically — the fundamental use case for
+server-side hooks.
+**Fix**: add `newRecord(collection)` to both `BaseApp` and the JSVM
+`createAppProxy`, returning `new RecordModel(collection.id,
+collection.name, {})`.
