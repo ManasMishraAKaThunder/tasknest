@@ -28,9 +28,6 @@ async function setRules(name, rules, token) {
   const existing = await getCollectionByName(name, token);
   if (!existing) throw new Error(`${name} not found`);
 
-  // IMPORTANT: only send rule fields, never touch "fields" here —
-  // resending fields without their existing ids corrupted a collection
-  // earlier (see docs/PACKAGE-ISSUES.md).
   const res = await fetch(`${BASE}/api/collections/${existing.id}`, {
     method: "PATCH",
     headers: {
@@ -45,64 +42,62 @@ async function setRules(name, rules, token) {
   return data;
 }
 
-// WORKAROUND: Solarch does NOT support the `?=` operator (PocketBase's "any match").
-// It silently treats `?` as a ternary operator, causing the rule to always fail.
-// Instead of complex back-relation rules like:
-//   workspace_members_via_workspace.user ?= @request.auth.id
-// We use simpler ownership rules:
-//   workspace.owner = @request.auth.id
-// For full membership-based access, the app also checks membership client-side.
+// WORKAROUND: Solarch's RecordFieldResolver.canAccessRecord() does NOT pass `app`
+// to the resolver (record_helpers.js:104-108), which means:
+//   - Relation traversal in rules (e.g. workspace.owner) can't resolve
+//   - Back-relation queries (e.g. workspace_members_via_workspace) can't execute
+//   - The ?= (any-match) operator doesn't exist
+// All relation-based rules silently return false → 403.
+//
+// Workaround: use simple auth-check rules. Access scoping is enforced
+// in the frontend by filtering to the user's own workspaces.
+
+const AUTHED = "@request.auth.id != ''";
 
 async function main() {
   const token = await login();
 
-  // Workspaces: any authed user can create; owner can update/delete;
-  // list/view uses owner check (membership-based scoping is broken in Solarch)
   await setRules("workspaces", {
-    listRule: "owner = @request.auth.id",
-    viewRule: "owner = @request.auth.id",
-    createRule: "@request.auth.id != ''",
-    updateRule: "owner = @request.auth.id",
-    deleteRule: "owner = @request.auth.id",
+    listRule: AUTHED,
+    viewRule: AUTHED,
+    createRule: AUTHED,
+    updateRule: AUTHED,
+    deleteRule: AUTHED,
   }, token);
 
-  // Workspace members: user can see own memberships, owner can see all
   await setRules("workspace_members", {
-    listRule: "user = @request.auth.id || workspace.owner = @request.auth.id",
-    viewRule: "user = @request.auth.id || workspace.owner = @request.auth.id",
-    createRule: "@request.auth.id != ''",
-    updateRule: "workspace.owner = @request.auth.id",
-    deleteRule: "workspace.owner = @request.auth.id",
+    listRule: AUTHED,
+    viewRule: AUTHED,
+    createRule: AUTHED,
+    updateRule: AUTHED,
+    deleteRule: AUTHED,
   }, token);
 
-  // Boards: scoped to workspace owner
   await setRules("boards", {
-    listRule: "workspace.owner = @request.auth.id",
-    viewRule: "workspace.owner = @request.auth.id",
-    createRule: "workspace.owner = @request.auth.id",
-    updateRule: "workspace.owner = @request.auth.id",
-    deleteRule: "workspace.owner = @request.auth.id",
+    listRule: AUTHED,
+    viewRule: AUTHED,
+    createRule: AUTHED,
+    updateRule: AUTHED,
+    deleteRule: AUTHED,
   }, token);
 
-  // Lists: scoped via board → workspace → owner
   await setRules("lists", {
-    listRule: "board.workspace.owner = @request.auth.id",
-    viewRule: "board.workspace.owner = @request.auth.id",
-    createRule: "board.workspace.owner = @request.auth.id",
-    updateRule: "board.workspace.owner = @request.auth.id",
-    deleteRule: "board.workspace.owner = @request.auth.id",
+    listRule: AUTHED,
+    viewRule: AUTHED,
+    createRule: AUTHED,
+    updateRule: AUTHED,
+    deleteRule: AUTHED,
   }, token);
 
-  // Tasks: scoped via list → board → workspace → owner
   await setRules("tasks", {
-    listRule: "list.board.workspace.owner = @request.auth.id",
-    viewRule: "list.board.workspace.owner = @request.auth.id",
-    createRule: "list.board.workspace.owner = @request.auth.id",
-    updateRule: "list.board.workspace.owner = @request.auth.id",
-    deleteRule: "list.board.workspace.owner = @request.auth.id",
+    listRule: AUTHED,
+    viewRule: AUTHED,
+    createRule: AUTHED,
+    updateRule: AUTHED,
+    deleteRule: AUTHED,
   }, token);
 
-  console.log("\nAll rules set.");
+  console.log("\nAll rules set (auth-only, see PACKAGE-ISSUES.md for why relation rules don't work).");
 }
 
 main().catch((err) => {
