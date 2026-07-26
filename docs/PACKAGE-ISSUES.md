@@ -199,3 +199,18 @@ This differs from base collections which return the record directly.
 Not necessarily a bug (PocketBase does something similar), but it's
 undocumented and surprising — especially since the existing `setup-
 collections.js` script assumed `data.id` would exist on the response.
+
+## 🔴 SQLite reserved words not quoted in generated SQL
+When a collection field is named with a SQLite reserved word (e.g.
+`order`), the `sort` query parameter generates raw SQL like
+`ORDER BY order` which causes a SQLite syntax error:
+`[ERROR] near "order": syntax error`.
+The column name should be quoted with backticks or double-quotes in
+all generated SQL (e.g. `ORDER BY "order"`).
+**Impact**: any collection with a field named after a SQL reserved
+word (order, group, select, table, etc.) crashes on list queries
+with sort parameters.
+**Workaround**: rename the field to a non-reserved word (e.g.
+`position` instead of `order`).
+**Fix**: quote all column identifiers in generated SQL using the
+existing `quoteIdentifier()` utility.
