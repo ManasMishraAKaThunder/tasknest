@@ -123,8 +123,8 @@ async function main() {
 
   // Test cascade delete (client-side workaround)
   console.log("\n--- Cascade delete test ---");
-  const list1 = await create("lists", { name: "To Do", board: board.id, order: 1 }, aliceToken);
-  const list2 = await create("lists", { name: "Done", board: board.id, order: 2 }, aliceToken);
+  const list1 = await create("lists", { name: "To Do", board: board.id, position: 1 }, aliceToken);
+  const list2 = await create("lists", { name: "Done", board: board.id, position: 2 }, aliceToken);
   const task1 = await create("tasks", { title: "Task A", list: list1.id }, aliceToken);
   const task2 = await create("tasks", { title: "Task B", list: list2.id }, aliceToken);
   console.log(`✓ created 2 lists and 2 tasks`);
