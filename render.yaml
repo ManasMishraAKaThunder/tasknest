@@ -22,4 +22,3 @@ services:
       name: solarch-data
       mountPath: /opt/render/project/src/pb_data
       sizeGB: 1
-
