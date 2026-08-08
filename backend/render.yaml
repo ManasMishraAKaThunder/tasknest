@@ -5,6 +5,7 @@ services:
     rootDir: backend
     buildCommand: npm install
     startCommand: npx tsx src/server.ts
+    healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production
