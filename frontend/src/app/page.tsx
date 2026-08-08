@@ -60,7 +60,7 @@ export default function LandingPage() {
               Start for Free →
             </Link>
             <a
-              href="https://github.com"
+              href="https://github.com/ManasMishraAKaThunder/tasknest"
               target="_blank"
               rel="noopener noreferrer"
               className="btn-ghost text-base px-8 py-3 inline-block no-underline"
