@@ -71,25 +71,6 @@ npm run dev                        # starts on http://localhost:3000
 3. Add env var: `NEXT_PUBLIC_API_URL=https://your-backend.onrender.com`
 4. Deploy.
 
-## Solarch Bugs Found
-
-See [docs/PACKAGE-ISSUES.md](docs/PACKAGE-ISSUES.md) for a comprehensive list of **9 bugs** discovered during development:
-
-| # | Severity | Summary |
-|---|----------|---------|
-| 1 | 🔴 | Admin UI not built into npm package |
-| 2 | 🔴 | Admin tokens don't bypass rules on auth collections |
-| 3 | 🔴 | Collection PATCH with fields array corrupts field IDs |
-| 4 | 🟡 | `collectionName` empty in returned records |
-| 5 | 🔴 | JS hook `onRecordCreate` tag parameter silently discarded |
-| 6 | 🔴 | `onRecordCreate`/Update/Delete hooks never triggered |
-| 7 | 🔴 | `$app.newRecord()` missing from JSVM sandbox |
-| 8 | 🔴 | `stripProtectedFields` strips `role` from ALL collections |
-| 9 | 🔴 | `?=` operator not implemented in rule expressions |
-| 10 | 🔴 | `canAccessRecord` doesn't pass `app` to resolver — breaks all relation rules |
-| 11 | 🟡 | Auth collection create returns `{token, record}` not just record |
-| 12 | 🔴 | SQLite reserved words not quoted in generated SQL |
-
 ## Project Structure
 
 ```
