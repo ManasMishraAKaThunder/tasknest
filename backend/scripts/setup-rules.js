@@ -44,6 +44,14 @@ const AUTHED = "@request.auth.id != ''";
 async function main() {
   const token = await login(BASE);
 
+  await setRules("users", {
+    listRule: AUTHED,
+    viewRule: AUTHED,
+    createRule: "", // Empty string allows public user registration (signup)
+    updateRule: AUTHED,
+    deleteRule: AUTHED,
+  }, token);
+
   await setRules("workspaces", {
     listRule: AUTHED,
     viewRule: AUTHED,
