@@ -1,20 +1,7 @@
 require("dotenv/config");
+const { login } = require("./auth-helper");
 
 const BASE = process.env.API_URL || `http://localhost:${process.env.PORT || 8090}`;
-
-async function login() {
-  const res = await fetch(`${BASE}/api/admins/auth-with-password`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      identity: process.env.ADMIN_EMAIL,
-      password: process.env.ADMIN_PASSWORD,
-    }),
-  });
-  const data = await res.json();
-  if (!data.token) throw new Error("Login failed: " + JSON.stringify(data));
-  return data.token;
-}
 
 async function getCollectionByName(name, token) {
   const res = await fetch(`${BASE}/api/collections/${name}`, {
@@ -55,7 +42,7 @@ async function setRules(name, rules, token) {
 const AUTHED = "@request.auth.id != ''";
 
 async function main() {
-  const token = await login();
+  const token = await login(BASE);
 
   await setRules("workspaces", {
     listRule: AUTHED,
